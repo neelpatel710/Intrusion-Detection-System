@@ -1,7 +1,7 @@
 import socket
 from struct import *
 import sys
-
+#Vinit
 #CONSTANTS
 OSNAME = "WIN"
 # OSNAME = "LINUX"
