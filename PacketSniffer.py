@@ -1,7 +1,7 @@
 import socket
 from struct import *
 import sys
-#Vinit
+#Vinit K
 #Neel
 #CONSTANTS
 OSNAME = "WIN"
