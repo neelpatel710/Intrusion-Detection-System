@@ -41,8 +41,8 @@ def TCPPacketExtract(packet):
 	return packet[header_length:]
 
 def UDPPacketExtract(packet):
-	src_port, dest_port, UDPlen = unpack("! H H H 2x", packet[:8])
-	printUDPPacket(src_port, dest_port, UDPlen)
+	src_port, dest_port, UDP_len = unpack("! H H H 2x", packet[:8])
+	printUDPPacket(src_port, dest_port, UDP_len)
 	return packet[8:]
 
 def convertBytestoType(byte_format, type):
@@ -101,6 +101,12 @@ def printTCPPacket(src_port, dest_port, seq_number, ack_number, header_length, U
 		  "   |--FIN Flag: {}\n".format(src_port, dest_port, seq_number, ack_number, header_length, URG_Flag, ACK_Flag,
 				   PSH_Flag, RST_Flag, SYN_Flag, FIN_Flag))
 
+def printUDPPacket(src_port, dest_port, UDP_len):
+	print(" |--UDP Packet:")
+	print("   |--Source Port: {}\n"
+		  "   |--Destination Port: {}\n"
+		  "   |--Data Length: {} bits\n".format(src_port, dest_port, UDP_len))
+
 def main():
 	if OSNAME == "WIN":
 		HOST = socket.gethostbyname(socket.gethostname())
@@ -116,7 +122,7 @@ def main():
 		s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(3))
 	# Capturing Raw Packets
 	i=0
-	while i<15 and START:
+	while i<40 and START:
 		raw_packet, IPaddr = s.recvfrom(65536)
 		if OSNAME == "LINUX":
 			dest_mac_addr, src_mac_addr, ether_type, IP_Packet = ethernetFrameExtract(raw_packet)
@@ -134,10 +140,9 @@ def main():
 			# TCP Packet
 			elif protocol == 6:
 				remaining_data = TCPPacketExtract(protocol_packet)
-			# print("      Data: {}".format(remaining_data))
 			# # UDP Packet
-			# elif protocol == 17:
-			# 	print("{} Segment:", PROTOCOL_DICT[protocol])
+			elif protocol == 17:
+				remaining_data = UDPPacketExtract(protocol_packet)
 			i+=1
 
 	if OSNAME == "WIN":
@@ -150,40 +155,40 @@ if __name__ == '__main__':
 
 
 
-import socket
-from struct import *
-
-import dpkt
-import pcap
-
-pc = pcap.pcap()  # construct pcap object
-# pc.setfilter('icmp') # filter out unwanted packets
-
-HOST = socket.gethostbyname(socket.gethostname())
-print("Interface IP: %s" % HOST)
-
-
-def ethernetFrameExtract(packet):
-    dest_mac_addr, src_mac_addr, ether_type = unpack("! 6s 6s H", packet[:14])
-    return dest_mac_addr, src_mac_addr, ether_type, packet[14:]
-
-
-def convertBytestoType(byte_format, type):
-    if type == "MAC":
-        # '02x' - Lowercase Hex Format --- '02X' - Uppercase Hex Format
-        six_octects = list(map("{:02X}".format, unpack("B B B B B B", byte_format)))
-        # mac_format = ':'.join(six_octects)
-        return ':'.join(six_octects)
-    elif type == "IP":
-        four_octects = list(map("{}".format, unpack("B B B B", byte_format)))
-        return '.'.join(four_octects)
-    else:
-        return "Wrong Type!"
-
-
-for timestamp, packet in pc:
-    print(timestamp)
-    dest_mac_addr, src_mac_addr, ether_type, pac = ethernetFrameExtract(dpkt.ethernet.Ethernet(packet))
-    dest = convertBytestoType(dest_mac_addr, "MAC")
-    src = convertBytestoType(src_mac_addr, "MAC")
-    print(dest, src, ether_type)
+# import socket
+# from struct import *
+#
+# import dpkt
+# import pcap
+#
+# pc = pcap.pcap()  # construct pcap object
+# # pc.setfilter('icmp') # filter out unwanted packets
+#
+# HOST = socket.gethostbyname(socket.gethostname())
+# print("Interface IP: %s" % HOST)
+#
+#
+# def ethernetFrameExtract(packet):
+#     dest_mac_addr, src_mac_addr, ether_type = unpack("! 6s 6s H", packet[:14])
+#     return dest_mac_addr, src_mac_addr, ether_type, packet[14:]
+#
+#
+# def convertBytestoType(byte_format, type):
+#     if type == "MAC":
+#         # '02x' - Lowercase Hex Format --- '02X' - Uppercase Hex Format
+#         six_octects = list(map("{:02X}".format, unpack("B B B B B B", byte_format)))
+#         # mac_format = ':'.join(six_octects)
+#         return ':'.join(six_octects)
+#     elif type == "IP":
+#         four_octects = list(map("{}".format, unpack("B B B B", byte_format)))
+#         return '.'.join(four_octects)
+#     else:
+#         return "Wrong Type!"
+#
+#
+# for timestamp, packet in pc:
+#     print(timestamp)
+#     dest_mac_addr, src_mac_addr, ether_type, pac = ethernetFrameExtract(dpkt.ethernet.Ethernet(packet))
+#     dest = convertBytestoType(dest_mac_addr, "MAC")
+#     src = convertBytestoType(src_mac_addr, "MAC")
+#     print(dest, src, ether_type)
