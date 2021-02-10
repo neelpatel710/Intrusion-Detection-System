@@ -1,8 +1,8 @@
 # FinalProjectMSC
 Intrusion Detection System
 <br>
-<br>Week – 2: (Starting Feb 2nd – Feb 9th)
-<br>•	Implementing the Ethernet Frame for Windows.
-<br>•	Defining Protocols in Programming (TCP, ICMP, UDP).
-<br>•	Extracting Protocols.
-<br>•	Understanding DDoS attacks.
+<br>Week – 3 (Starting Feb 9th – Feb 16th):
+<br>•	Still need to figure out Ethernet Frame.
+<br>•	Implementing DoS: Ping Flood, SYN Flood, UDP Flood. 
+<br>•	Same Source. ICMP Packet (Request or Reply). Threshold = 10. Time: 60 sec or 1 min. Alert.
+<br>•	Focus on Distributed.
