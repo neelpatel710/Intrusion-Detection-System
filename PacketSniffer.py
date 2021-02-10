@@ -40,6 +40,11 @@ def TCPPacketExtract(packet):
 				   PSH_Flag, RST_Flag, SYN_Flag, FIN_Flag)
 	return packet[header_length:]
 
+def UDPPacketExtract(packet):
+	src_port, dest_port, UDPlen = unpack("! H H H 2x", packet[:8])
+	printUDPPacket(src_port, dest_port, UDPlen)
+	return packet[8:]
+
 def convertBytestoType(byte_format, type):
 	if type == "MAC":
 		# '02x' - Lowercase Hex Format --- '02X' - Uppercase Hex Format
