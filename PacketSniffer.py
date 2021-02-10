@@ -147,3 +147,43 @@ def main():
 if __name__ == '__main__':
     main()
 
+
+
+
+import socket
+from struct import *
+
+import dpkt
+import pcap
+
+pc = pcap.pcap()  # construct pcap object
+# pc.setfilter('icmp') # filter out unwanted packets
+
+HOST = socket.gethostbyname(socket.gethostname())
+print("Interface IP: %s" % HOST)
+
+
+def ethernetFrameExtract(packet):
+    dest_mac_addr, src_mac_addr, ether_type = unpack("! 6s 6s H", packet[:14])
+    return dest_mac_addr, src_mac_addr, ether_type, packet[14:]
+
+
+def convertBytestoType(byte_format, type):
+    if type == "MAC":
+        # '02x' - Lowercase Hex Format --- '02X' - Uppercase Hex Format
+        six_octects = list(map("{:02X}".format, unpack("B B B B B B", byte_format)))
+        # mac_format = ':'.join(six_octects)
+        return ':'.join(six_octects)
+    elif type == "IP":
+        four_octects = list(map("{}".format, unpack("B B B B", byte_format)))
+        return '.'.join(four_octects)
+    else:
+        return "Wrong Type!"
+
+
+for timestamp, packet in pc:
+    print(timestamp)
+    dest_mac_addr, src_mac_addr, ether_type, pac = ethernetFrameExtract(dpkt.ethernet.Ethernet(packet))
+    dest = convertBytestoType(dest_mac_addr, "MAC")
+    src = convertBytestoType(src_mac_addr, "MAC")
+    print(dest, src, ether_type)
