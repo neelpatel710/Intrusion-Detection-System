@@ -39,8 +39,8 @@ class Sniffer:
         self.header_length = (version_and_header_length & 15) * 4  # 4 because 4 bytes of a word(32-bit).
         # if self.protocol in self.PROTOCOL_DICT.keys():
         if self.protocol in [1]:
-        # if self.protocol in [6]:
-        # if self.protocol in [17]:
+            # if self.protocol in [6]:
+            # if self.protocol in [17]:
             self.printIPPacket()
             return packet[self.header_length:]
         else:
@@ -64,10 +64,10 @@ class Sniffer:
     def ICMPPacketExtract(self, packet):
         self.type_icmp, self.code, self.sequence_number = unpack("! B B 4x H", packet[:8])
         self.printICMPPacket()
-        # return packet[8:]
+        return packet[8:]
 
     def printICMPPacket(self):
-        TYPE_STR = {8: "Request", 0: "Reply"}
+        TYPE_STR = {8: "Request", 0: "Reply", 3: "Error"}
         print(" |--ICMP Packet:")
         print("   |--Type: {} - {}\n"
               "   |--Code: {}\n"
@@ -146,7 +146,8 @@ class Sniffer:
             # ICMP Packet
             if self.protocol == 1:
                 remaining_data = self.ICMPPacketExtract(protocol_packet)
-                sign_object.ICMPFlood("src", 10, 120)
+                if self.type_icmp == 8: #Only Request
+                    sign_object.ICMPFlood("src", 20, 120)
             # TCP Packet
             elif self.protocol == 6:
                 remaining_data = self.TCPPacketExtract(protocol_packet)
