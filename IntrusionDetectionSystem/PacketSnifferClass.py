@@ -147,10 +147,13 @@ class Sniffer:
             if self.protocol == 1:
                 remaining_data = self.ICMPPacketExtract(protocol_packet)
                 if self.type_icmp == 8: #Only Request
-                    sign_object.ICMPFlood("src", 20, 120)
+                    sign_object.ICMPFlood(20, 120)
             # TCP Packet
             elif self.protocol == 6:
                 remaining_data = self.TCPPacketExtract(protocol_packet)
+                if self.SYN_Flag == 1 and self.URG_Flag == 0 and self.RST_Flag == 0 and self.PSH_Flag == 0 \
+                    and self.FIN_Flag == 0 and self.ACK_Flag == 0:
+                    sign_object.SYNFlood(20, 120)
             # # UDP Packet
             elif self.protocol == 17:
                 remaining_data = self.UDPPacketExtract(protocol_packet)
