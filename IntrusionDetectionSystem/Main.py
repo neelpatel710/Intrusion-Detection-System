@@ -1,6 +1,5 @@
-from PacketSnifferClass import Sniffer
 import platform
-import socket
+from GUIClass import *
 
 if platform.system().lower() == "windows":
     print("OS Base Detected: %s" %platform.system())
@@ -13,30 +12,39 @@ elif platform.system().lower() == "linux":
 START = True
 
 def main():
-    if OSNAME == "WIN":
-        HOST = socket.gethostbyname(socket.gethostname())
-        print("Interface IP: %s" % HOST)
-        # Create a raw socket and bind it to the public interface
-        s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IP)
-        s.bind((HOST, 0))
-        # Include IP headers
-        s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
-        # Promiscuous mode - Enabled
-        s.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
-    elif OSNAME == "LINUX":
-        s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(3))
-    # Capturing Raw Packets
-    i=0
-    while i<300 and START:
-        raw_packet, IPaddr = s.recvfrom(65536)
-        ps_object = Sniffer(raw_packet, OSNAME)
-        if ps_object.capturePacket() == 0:
-            ps_object.logPacketToFile()
-            i= i + 1
+    # Initializing the file.
+    with open('./PacketLog.json','w') as file:
+        json.dump({"Packets": []}, file)
+    try:
+        with open('./PacketLog.txt','r'):
+            None
+        with open('./PacketLog.txt','w') as file:
+            json.load('',file)
+    except:
+        pass
+    try:
+        with open('./Config.json','r'):
+            None
+    except:
+        default = {"DOS": {"ping":{"threshold": 10, "timeinterval": 60}, "syn":{"threshold": 50, "timeinterval": 60},
+                           "udp":{"threshold": 50, "timeinterval": 60}},"DDOS": {"ping":{"threshold": 100, "timeinterval": 120},
+                        "syn":{"threshold": 100, "timeinterval": 120}, "udp":{"threshold": 100, "timeinterval": 120}}, "logEnabled":True}
+        with open('./Config.json','w') as file:
+            json.dump(default,file)
+    with open("./Config.json",'r') as file:
+        fetchConfig = json.load(file)
 
     if OSNAME == "WIN":
-        # Promiscuous mode - Disabled
-        s.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+        gui = GUI(fetchConfig)
+    elif OSNAME == "LINUX":
+        s = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.htons(3))
+        while True:
+            raw_packet, IPaddr = s.recvfrom(65536)
+            ps_object = Sniffer(raw_packet, OSNAME)
+            capture = ps_object.capturePacket()
+            if capture == 0 or capture == 3:
+                if fetchConfig["logEnabled"]: ps_object.logPacketToFile(index)
+                index = index + 1
 
 if __name__ == '__main__':
     main()

@@ -1,0 +1,1 @@
+{"DOS": {"ping": {"threshold": 10, "timeinterval": 60}, "syn": {"threshold": 50, "timeinterval": 60}, "udp": {"threshold": 50, "timeinterval": 60}}, "DDOS": {"ping": {"threshold": 100, "timeinterval": 120}, "syn": {"threshold": 100, "timeinterval": 120}, "udp": {"threshold": 100, "timeinterval": 120}}, "logEnabled": true}
