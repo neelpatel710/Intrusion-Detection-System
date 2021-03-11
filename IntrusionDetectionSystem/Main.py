@@ -30,7 +30,11 @@ def main():
                        {"status":True,
                         "ping":{"threshold": 100, "timeinterval": 120, "status":True},
                         "syn":{"threshold": 100, "timeinterval": 120, "status":True},
-                        "udp":{"threshold": 100, "timeinterval": 120, "status":True}}, "logEnabled":False}
+                        "udp":{"threshold": 100, "timeinterval": 120, "status":True}},
+                   "logEnabled":False,
+                   "FTP":
+                       {"status":True,
+                        "threshold":3000, "timeinterval":120}}
 
         with open('./Config.json','w') as file:
             json.dump(default,file)
@@ -55,12 +59,11 @@ def main():
             raw_packet, IPaddr = s.recvfrom(65536)
             ps_object = Sniffer(raw_packet, fetchConfig, OSNAME)
             capture = ps_object.capturePacket()
-            if capture == 0 or capture == 3:
-                if fetchConfig["logEnabled"] and capture ==0:
-                    ps_object.logPacketToFile(index, logFileName)
-                elif fetchConfig["logEnabled"] and capture ==3:
-                    ps_object.logPacketToFile(index, logFileName, "AttackPacket")
-                index = index + 1
+            if fetchConfig["logEnabled"] and not bool(capture):
+                ps_object.logPacketToFile(index, logFileName)
+            elif fetchConfig["logEnabled"] and bool(capture):
+                ps_object.logPacketToFile(index, logFileName, "AttackPacket")
+            index = index + 1
 
 if __name__ == '__main__':
     main()

@@ -1,9 +1,9 @@
-import socket, json
+import socket, json, codecs
 from struct import *
 from SignatureClass import Signatures
 
 #CONSTANTS
-PRINT = True
+PRINT = False
 
 class Sniffer:
     packet_id = 0
@@ -12,6 +12,9 @@ class Sniffer:
         self.currentPacket = {}
         self.packet = packet
         self.os = os
+        # self.PROTOCOL_DICT = {1:"ICMP"}
+        # self.PROTOCOL_DICT = {6:"TCP"}
+        # self.PROTOCOL_DICT = {17:"UDP"}
         self.PROTOCOL_DICT = {1:"ICMP", 6:"TCP", 17:"UDP"}
         self.attack = {"dping": 0, "dsyn": 0, "dudp": 0, "ddping": 0, "ddsyn": 0, "ddudp": 0}
 
@@ -44,10 +47,7 @@ class Sniffer:
         # Seperating Version and Header Length
         self.currentPacket['version'] = version_and_header_length >> 4
         self.currentPacket['header_length'] = (version_and_header_length & 15) * 4  # 4 because 4 bytes of a word(32-bit).
-        # if self.currentPacket['protocol'] in self.PROTOCOL_DICT.keys():
-        if self.currentPacket['protocol'] in [1]:
-        # if self.currentPacket['protocol'] in [6]:
-        # if self.currentPacket['protocol'] in [17]:
+        if self.currentPacket['protocol'] in self.PROTOCOL_DICT.keys():
             self.currentPacket['protocol_name'] = self.PROTOCOL_DICT[self.currentPacket['protocol']]
             if PRINT: self.printIPPacket()
             return packet[self.currentPacket['header_length']:]
@@ -157,45 +157,58 @@ class Sniffer:
                 remaining_data = self.ICMPPacketExtract(protocol_packet)
                 if self.currentPacket['type_icmp'] == 8: #Only Request
                     if self.config["DOS"]["ping"]["status"] == True:
-                        self.attack["dping"] = sign_object.DenialOfService("ping", self.config["DOS"]["ping"]["threshold"], self.config["DOS"]["ping"]["timeinterval"])
+                        sign_object.DenialOfService("ping", self.config["DOS"]["ping"]["threshold"], self.config["DOS"]["ping"]["timeinterval"])
                     if self.config["DDOS"]["ping"]["status"] == True:
-                        self.attack["ddping"] = sign_object.DistrubutedDOS("ping", self.config["DDOS"]["ping"]["threshold"], self.config["DDOS"]["ping"]["timeinterval"])
+                        sign_object.DistrubutedDOS("ping", self.config["DDOS"]["ping"]["threshold"], self.config["DDOS"]["ping"]["timeinterval"])
             # TCP Packet
             elif self.currentPacket['protocol'] == 6:
                 remaining_data = self.TCPPacketExtract(protocol_packet)
                 if self.currentPacket['SYN_Flag'] == 1 and self.currentPacket['URG_Flag'] == 0 and self.currentPacket['ACK_Flag'] == 0 and \
                         self.currentPacket['PSH_Flag'] == 0 and self.currentPacket['RST_Flag'] == 0 and self.currentPacket['FIN_Flag'] ==0: #Only SYN Flag
                     if self.config["DOS"]["syn"]["status"] == True:
-                        self.attack["dsyn"] = sign_object.DenialOfService("syn", self.config["DOS"]["syn"]["threshold"], self.config["DOS"]["syn"]["timeinterval"])
+                        sign_object.DenialOfService("syn", self.config["DOS"]["syn"]["threshold"], self.config["DOS"]["syn"]["timeinterval"])
                     if self.config["DDOS"]["syn"]["status"] == True:
-                        self.attack["ddysn"] = sign_object.DistrubutedDOS("syn", self.config["DDOS"]["syn"]["threshold"], self.config["DDOS"]["syn"]["timeinterval"])
-            # # UDP Packet
+                        sign_object.DistrubutedDOS("syn", self.config["DDOS"]["syn"]["threshold"], self.config["DDOS"]["syn"]["timeinterval"])
+                if self.currentPacket['src_port'] == 21 and self.config["FTP"]["status"]:
+                    bytes = "530 User cannot log in.".encode()
+                    if bytes in remaining_data:
+                        sign_object.FTPBruteForce(self.config["FTP"]["threshold"], self.config["FTP"]["timeinterval"])
+            # UDP Packet
             elif self.currentPacket['protocol'] == 17:
                 remaining_data = self.UDPPacketExtract(protocol_packet)
                 if self.config["DOS"]["udp"]["status"] == True:
-                    self.attack["dudp"] = sign_object.DenialOfService("udp", self.config["DOS"]["udp"]["threshold"], self.config["DOS"]["udp"]["timeinterval"])
+                    sign_object.DenialOfService("udp", self.config["DOS"]["udp"]["threshold"], self.config["DOS"]["udp"]["timeinterval"])
                 if self.config["DDOS"]["udp"]["status"] == True:
-                    self.attack["ddudp"] = sign_object.DistrubutedDOS("udp", self.config["DDOS"]["udp"]["threshold"], self.config["DDOS"]["udp"]["timeinterval"])
+                    sign_object.DistrubutedDOS("udp", self.config["DDOS"]["udp"]["threshold"], self.config["DDOS"]["udp"]["timeinterval"])
             # For Fetching on Double Click
+            storedData = None
             try:
                 with open('./PacketLog.json','r') as file:
                     storedData = json.load(file)
                 storedData["Packets"].append(self.currentPacket)
             except:
                 pass
-
-            with open('./PacketLog.json','w') as file:
-                json.dump(storedData, file)
-            if sum(self.attack.values()) == 0:
-                return 0
-            else:
-                return 3
-        return -1
+            if storedData != None:
+                with open('./PacketLog.json','w') as file:
+                    json.dump(storedData, file)
+            if sign_object.dos_attack == None and sign_object.ddos_attack == None:
+                return []
+            elif sign_object.ddos_attack != None:
+                return sign_object.ddos_attack
+            elif sign_object.dos_attack != None:
+                return sign_object.dos_attack
+        return None
 
     def appendRowToGUI(self):
         Sniffer.packet_id = Sniffer.packet_id + 1
         row = [str(Sniffer.packet_id), str(self.currentPacket['src_ip_addr']), str(self.currentPacket['dest_ip_addr']),
-               self.PROTOCOL_DICT[self.currentPacket['protocol']], "Hello World"]
+               self.PROTOCOL_DICT[self.currentPacket['protocol']]]
+        if self.currentPacket["protocol"] == 1:
+            row.append("ICMP Type: {} (Request)".format(self.currentPacket["type_icmp"])) if self.currentPacket["type_icmp"] == 8 else row.append("ICMP Reply")
+        elif self.currentPacket["protocol"] == 6:
+            row.append("Src. Port: {} -> Dest. Port: {}".format(self.currentPacket['src_port'],self.currentPacket['dest_port']))
+        elif self.currentPacket["protocol"] == 17:
+            row.append("Data: {} bits".format(self.currentPacket['UDP_len']))
         return row
 
     def logPacketToFile(self, index, filename, attacktype=None):

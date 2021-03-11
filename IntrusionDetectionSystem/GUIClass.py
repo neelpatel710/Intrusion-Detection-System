@@ -16,7 +16,12 @@ class GUI:
     def __init__(self, config):
         GUI.config = config
         self.newWindow = None
+        self.AlertShownDOS = 0
+        self.AlertShownDDOS = 0
+        self.AlertShownFTP = 0
         self.main_window = Tk()
+        self.main_window.geometry('+{}+{}'.format(int(self.main_window.winfo_screenwidth()/3 - self.main_window.winfo_reqwidth()/2),
+                                                  int(self.main_window.winfo_screenheight()/3 - self.main_window.winfo_reqheight()/2)))
         self.main_window.geometry('750x300')
         self.main_window.title('Intrusion Detection System')
         style = ttk.Style()
@@ -74,51 +79,46 @@ class GUI:
         # More Details
         self.tree_view.bind("<Double-1>", self.OnDoubleClick)
 
-    # import threading
-
-    # class StoppableThread(threading.Thread):
-    #     """Thread class with a stop() method. The thread itself has to check
-    #     regularly for the stopped() condition."""
+    # def iconTray(self):
+    #     image = Image.open('Tray Icon.png')
+    #     self.menu = pystray.Menu(item("Open", self.actionOpen),item("Quit", self.actionClose))
+    #     self.icon_var = pystray.Icon('IDS', image, 'IDST', self.menu)
     #
-    #     def __init__(self,  *args, **kwargs):
-    #         super(StoppableThread, self).__init__(*args, **kwargs)
-    #         self._stop_event = threading.Event()
+    # def actionOpen(self):
+    #     self.icon_var.stop()
+    #     self.main_window.deiconify()
+    #     self.main_window.focus_force()
     #
-    #     def stop(self):
-    #         self._stop_event.set()
-    #
-    #     def stopped(self):
-    #         return self._stop_event.is_set()
-    def iconTray(self):
-        image = Image.open('icontray.png')
-        self.menu = pystray.Menu(item("Open", self.actionOpen))
-        self.icon_var = pystray.Icon('IDS', image, 'IDST', self.menu)
-
-    def actionOpen(self):
-        self.main_window.deiconify()
-        self.main_window.focus_force()
-        self.icon_var.stop()
+    # def actionClose(self):
+    #     # self.main_window.deiconify()
+    #     sys.exit(0)
 
     def capturing(self):
-        while GUI.currentCaptureState:
+        while GUI.currentCaptureState and not self.thread.stopped():
             raw_packet, IPaddr = self.s.recvfrom(65536)
             ps_object = Sniffer(raw_packet, GUI.config, "WIN")
             capture = ps_object.capturePacket()
-            if capture == 0 or capture == 3:
-                row = ps_object.appendRowToGUI()
-                if capture == 0:
-                    self.appendData(GUI.index, GUI.index+1, row)
-                elif capture == 3:
-                    self.appendData(GUI.index, GUI.index, row, ('attack',))
-                if GUI.config["logEnabled"] and capture == 0:
-                    ps_object.logPacketToFile(GUI.index+1, self.filename)
-                elif GUI.config["logEnabled"] and capture == 3:
-                    ps_object.logPacketToFile(GUI.index+1, self.filename, "AttackPacket")
-                GUI.index = GUI.index + 1
-                try:
-                    self.labelText.set(" Number of Packets Captured: {}  ".format(GUI.index))
-                except:
-                    pass
+            row = ps_object.appendRowToGUI()
+            # print(bool(capture))
+            if not bool(capture):
+                self.appendData(GUI.index, GUI.index+1, row)
+            elif capture != -1:
+                self.appendData(GUI.index, GUI.index+1, row, ('attack',))
+                if capture[0] == "Distributed Denial of Service":
+                    self.alertAttackDDOS(capture)
+                if capture[0] == "Denial of Service":
+                    self.alertAttackDOS(capture)
+                if capture[0] == "FTP Brute Force Attack":
+                    self.alertAttackFTP(capture)
+            if GUI.config["logEnabled"] and not bool(capture):
+                ps_object.logPacketToFile(GUI.index+1, self.filename)
+            elif GUI.config["logEnabled"] and bool(capture):
+                ps_object.logPacketToFile(GUI.index+1, self.filename, "AttackPacket")
+            GUI.index = GUI.index + 1
+            try:
+                self.labelText.set(" Number of Packets Captured: {}  ".format(GUI.index))
+            except:
+                pass
 
     def startCapture(self):
         self.btnStartCapture.config(state=DISABLED)
@@ -145,7 +145,9 @@ class GUI:
             self.filename = "None.txt"
         if GUI.time == None:
             GUI.time = time.time()
-        self.thread = threading.Thread(target=self.capturing)
+        # self.thread = threading.Thread(target=self.capturing, daemon=True)
+        # self.thread.start()
+        self.thread = StoppableThread(target=self.capturing, daemon=True)
         self.thread.start()
 
     def stopCapture(self):
@@ -154,6 +156,8 @@ class GUI:
         self.btnStopCapture.config(state=DISABLED)
         GUI.currentCaptureState = False
         self.s.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
+        # self.thread = None
+        self.thread.stop()
 
     def disableAll(self,mainAttack):
         if mainAttack == "DOS":
@@ -204,7 +208,9 @@ class GUI:
             self.main_window.withdraw()
             self.newWindow = Toplevel(self.main_window)
             self.newWindow.focus_force()
-            self.newWindow.geometry('300x300')
+            self.newWindow.geometry('300x350')
+            self.newWindow.geometry('+{}+{}'.format(int(self.newWindow.winfo_screenwidth()/2 - self.newWindow.winfo_reqwidth()/2),
+                                                      int(self.newWindow.winfo_screenheight()/3 - self.newWindow.winfo_reqheight()/2)))
             self.newWindow.title("Edit Configuration")
             self.newWindow.resizable(FALSE,FALSE)
             Label(self.newWindow, text="Threshold", font=('helvetica', 9, 'underline')).place(x=135,y=12)
@@ -336,10 +342,30 @@ class GUI:
                     self.ddudp_timeinterval.config(state=DISABLED)
             else:
                 self.disableAll("DDOS")
+            # FTP Brute Force
+            self.var_ftp = IntVar(self.newWindow)
+            self.ftpcheckbox = Checkbutton(self.newWindow, font=('helvetica', 9, 'bold'), text='FTP Brute Force',variable=self.var_ftp, onvalue=1, offvalue=0, command=self.configFTPAttack)
+            self.ftpcheckbox.pack(pady=10)
+            self.ftpcheckbox.place(x=10,y=250)
+            self.ftp_threshold = Entry(self.newWindow, width=8, relief=GROOVE)
+            self.ftp_threshold.place(x=140,y=254)
+            self.ftp_timeinterval = Entry(self.newWindow, width=8, relief=GROOVE)
+            self.ftp_timeinterval.place(x=220,y=254)
+            self.ftp_threshold.insert(END, GUI.config["FTP"]["threshold"])
+            self.ftp_timeinterval.insert(END, GUI.config["FTP"]["timeinterval"])
+            if GUI.config["FTP"]["status"] == True:
+                self.ftpcheckbox.select()
+                self.ftp_threshold.config(state=NORMAL)
+                self.ftp_timeinterval.config(state=NORMAL)
+            else:
+                self.ftpcheckbox.deselect()
+                self.ftp_threshold.config(state=DISABLED)
+                self.ftp_timeinterval.config(state=DISABLED)
+            # Packet Log
             self.dumy_var = IntVar(self.newWindow)
             self.checkbox = Checkbutton(self.newWindow, font=('helvetica', 9, 'bold'), text='Log Packets',variable=self.dumy_var, onvalue=1, offvalue=0, command=self.updateLogState)
             self.checkbox.pack(pady=10)
-            self.checkbox.place(x=10,y=250)
+            self.checkbox.place(x=10,y=280)
             if GUI.config["logEnabled"] == True:
                 self.checkbox.select()
             self.newWindow.mainloop()
@@ -438,6 +464,18 @@ class GUI:
                 self.ddudp_threshold.config(state=DISABLED)
                 self.ddudp_timeinterval.config(state=DISABLED)
 
+    def configFTPAttack(self):
+        if self.var_ftp.get() == 1:
+            GUI.config["FTP"]["status"]=True
+            self.ftpcheckbox.select()
+            self.ftp_threshold.config(state=NORMAL)
+            self.ftp_timeinterval.config(state=NORMAL)
+        else:
+            GUI.config["FTP"]["status"]=False
+            self.ftpcheckbox.deselect()
+            self.ftp_threshold.config(state=DISABLED)
+            self.ftp_timeinterval.config(state=DISABLED)
+
     def configClosed(self):
         try:
             temp = GUI.config
@@ -453,6 +491,8 @@ class GUI:
             temp["DDOS"]["syn"]["timeinterval"] = int(self.ddsyn_timeinterval.get())
             temp["DDOS"]["udp"]["threshold"] = int(self.ddudp_threshold.get())
             temp["DDOS"]["udp"]["timeinterval"] = int(self.ddudp_timeinterval.get())
+            temp["FTP"]["threshold"] = int(self.ftp_threshold.get())
+            temp["FTP"]["timeinterval"] = int(self.ftp_timeinterval.get())
             GUI.config = temp
         except:
             pass
@@ -461,6 +501,57 @@ class GUI:
         self.newWindow.destroy()
         self.main_window.deiconify()
         self.newWindow = None
+
+    def alertAttackDOS(self,display):
+        if self.AlertShownDOS == 0:
+            self.alertdos = Tk()
+            self.alertdos.title(display[0])
+            self.alertdos.geometry("350x50")
+            self.alertdos.geometry('+{}+{}'.format(int(self.alertdos.winfo_screenwidth()/2.3 - self.alertdos.winfo_reqwidth()/2),
+                                                      int(self.alertdos.winfo_screenheight()/2 - self.alertdos.winfo_reqheight()/2)))
+            self.alertdos.winfo_toplevel()
+            self.alertdos.focus_force()
+            Label(self.alertdos, anchor=CENTER, text="Alert! Denial of Service detected from IP: {}\nType: {} Flood!".format(display[1], display[2].upper()), font=('helvetica', 9)).pack()
+            self.alertdos.protocol('WM_DELETE_WINDOW', self.alertdosClosed)
+            self.alertdos.mainloop()
+
+    def alertdosClosed(self):
+        self.alertdos.destroy()
+        self.AlertShownDOS = 1
+
+    def alertAttackDDOS(self,display):
+        if self.AlertShownDDOS == 0:
+            self.alertddos = Tk()
+            self.alertddos.title(display[0])
+            self.alertddos.geometry("400x50")
+            self.alertddos.geometry('+{}+{}'.format(int(self.alertddos.winfo_screenwidth()/2.3 - self.alertddos.winfo_reqwidth()/2),
+                                                   int(self.alertddos.winfo_screenheight()/2 - self.alertddos.winfo_reqheight()/2)))
+            self.alertddos.winfo_toplevel()
+            self.alertddos.focus_force()
+            Label(self.alertddos, anchor=CENTER, text="Alert! Distributed Denial of Service detected from IP: {}\nType: {} Flood!".format(display[1], display[2].upper()), font=('helvetica', 9)).pack()
+            self.alertddos.protocol('WM_DELETE_WINDOW', self.alertddosClosed)
+            self.alertddos.mainloop()
+
+    def alertddosClosed(self):
+        self.alertddos.destroy()
+        self.AlertShownDDOS = 1
+
+    def alertAttackFTP(self,display):
+        if self.AlertShownFTP == 0:
+            self.alertftp = Tk()
+            self.alertftp.title(display[0])
+            self.alertftp.geometry("350x50")
+            self.alertftp.geometry('+{}+{}'.format(int(self.alertftp.winfo_screenwidth()/2.3 - self.alertftp.winfo_reqwidth()/2),
+                                                   int(self.alertftp.winfo_screenheight()/2 - self.alertftp.winfo_reqheight()/2)))
+            self.alertftp.winfo_toplevel()
+            self.alertftp.focus_force()
+            Label(self.alertftp, anchor=CENTER, text="Alert! FTP Login-Brute Force Attack detected from \nIP: {}!".format(display[1]), font=('helvetica', 9)).pack()
+            self.alertftp.protocol('WM_DELETE_WINDOW', self.alertftpClosed)
+            self.alertftp.mainloop()
+
+    def alertftpClosed(self):
+        self.alertftp.destroy()
+        self.AlertShownFTP = 1
 
     def appendData(self, currentIndex, currentID, value_list, tags=()):
         try:
@@ -475,7 +566,56 @@ class GUI:
         with open("./PacketLog.json",'r') as file:
             storedData = json.load(file)
         selectedPacket = [x for x in storedData["Packets"] if x["pacID"]==selectedID][0]
-        messagebox.showinfo("Selected Packet",selectedPacket)
+        if selectedPacket["protocol"] == 1:
+            TYPE_STR = {8: "Request", 0: "Reply", 3: "Error"}
+            message = """Packet ID: {}
+Version: {}
+Header Length: {} bytes
+Time to Live: {} seconds
+Protocol: {}
+Source IP Address: {}
+Destination IP Address: {}
+Type: {} - {}
+Code: {}
+Sequence Number: {}""".format(selectedPacket["pacID"],selectedPacket['version'], selectedPacket['header_length'], selectedPacket['time_to_live'], selectedPacket['protocol'],
+                       selectedPacket['src_ip_addr'], selectedPacket['dest_ip_addr'],selectedPacket['type_icmp'], TYPE_STR[selectedPacket['type_icmp']], selectedPacket['code'], selectedPacket['sequence_number'])
+        elif selectedPacket["protocol"] == 6:
+            message = """Packet ID: {}
+Version: {}
+Header Length: {} bytes
+Time to Live: {} seconds
+Protocol: {}
+Source IP Address: {}
+Destination IP Address: {}
+Source Port: {}
+Destination Port: {}
+Sequence Number: {}
+Acknowlegdement Number: {}
+Header Length:{} Bytes
+URG Flag: {}
+ACK Flag: {}
+PSH Flag: {}
+RST Flag: {}
+SYN Flag: {}
+FIN Flag: {}""".format(selectedPacket["pacID"],selectedPacket['version'], selectedPacket['header_length'], selectedPacket['time_to_live'], selectedPacket['protocol'],
+                       selectedPacket['src_ip_addr'], selectedPacket['dest_ip_addr'],selectedPacket['src_port'], selectedPacket['dest_port'], selectedPacket['seq_number'], selectedPacket['ack_number'],
+                       selectedPacket['header_length_tcp'], selectedPacket['URG_Flag'], selectedPacket['ACK_Flag'], selectedPacket['PSH_Flag'],
+                       selectedPacket['RST_Flag'], selectedPacket['SYN_Flag'], selectedPacket['FIN_Flag'])
+        elif selectedPacket["protocol"] == 17:
+            message = """Packet ID: {}
+Version: {}
+Header Length: {} bytes
+Time to Live: {} seconds
+Protocol: {}
+Source IP Address: {}
+Destination IP Address: {}
+Source Port: {}
+Destination Port: {}
+Data Length:{} Bits""".format(selectedPacket["pacID"],selectedPacket['version'], selectedPacket['header_length'], selectedPacket['time_to_live'], selectedPacket['protocol'],
+                       selectedPacket['src_ip_addr'], selectedPacket['dest_ip_addr'],selectedPacket['src_port'], selectedPacket['dest_port'], selectedPacket['UDP_len'])
+        else:
+            message = "None"
+        messagebox.showinfo("Selected Packet",message)
 
     def updateLogState(self):
         if self.dumy_var.get() == 1:
@@ -485,6 +625,24 @@ class GUI:
 
     def onClosing(self):
         self.main_window.withdraw()
-        self.iconTray()
-        self.icon_var.run()
+        sys.exit(0)
+        # self.iconTray()
+        # self.thread.stop()
+        # self.thread2 = StoppableThread(target=self.capturing, daemon=True)
+        # self.icon_var.run(setup=self.capturing)
         # self.main_window.destroy()
+
+class StoppableThread(threading.Thread):
+
+    def __init__(self, *args, **kwargs):
+        super(StoppableThread, self).__init__(*args, **kwargs)
+        self._stop_event = threading.Event()
+
+    def unstop(self):
+        self._stop_event.clear()
+
+    def stop(self):
+        self._stop_event.set()
+
+    def stopped(self):
+        return self._stop_event.is_set()
