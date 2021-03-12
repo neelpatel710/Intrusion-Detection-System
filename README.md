@@ -1,4 +1,6 @@
 # Intrusion Detection System
+Attack Included: Denial of Service (PING, SYN and UDP Flood), Distributed Denial of Service (PING, SYN and UDP Flood) and FTP Login (Brute Force)
+<br> Programming Language: Python 3.6
 <br> For Linux:
 <br> 1. Clone the repository.
 <br> 2. Open terminal and change the directory to downloaded folder.
