@@ -1,4 +1,4 @@
-import socket, json, codecs
+import socket, json
 from struct import *
 from SignatureClass import Signatures
 
@@ -6,6 +6,7 @@ from SignatureClass import Signatures
 PRINT = False
 
 class Sniffer:
+    global PRINT
     packet_id = 0
     def __init__(self, packet, config, os):
         self.config = config
@@ -13,9 +14,9 @@ class Sniffer:
         self.packet = packet
         self.os = os
         # self.PROTOCOL_DICT = {1:"ICMP"}
-        # self.PROTOCOL_DICT = {6:"TCP"}
+        self.PROTOCOL_DICT = {6:"TCP"}
         # self.PROTOCOL_DICT = {17:"UDP"}
-        self.PROTOCOL_DICT = {1:"ICMP", 6:"TCP", 17:"UDP"}
+        # self.PROTOCOL_DICT = {1:"ICMP", 6:"TCP", 17:"UDP"}
         self.attack = {"dping": 0, "dsyn": 0, "dudp": 0, "ddping": 0, "ddsyn": 0, "ddudp": 0}
 
     # --------------------Ethernet Frame----------------------------
@@ -25,7 +26,6 @@ class Sniffer:
         self.currentPacket['src_mac'] = self.convertBytestoType(src_mac_addr, "MAC")
         self.currentPacket['ether_type'] = socket.htons(ether_type)
         if self.currentPacket['ether_type'] == 8:
-            if PRINT: self.printEthernetFrame()
             return packet[14:]
         else:
             return None
@@ -49,7 +49,8 @@ class Sniffer:
         self.currentPacket['header_length'] = (version_and_header_length & 15) * 4  # 4 because 4 bytes of a word(32-bit).
         if self.currentPacket['protocol'] in self.PROTOCOL_DICT.keys():
             self.currentPacket['protocol_name'] = self.PROTOCOL_DICT[self.currentPacket['protocol']]
-            if PRINT: self.printIPPacket()
+            if self.os == "LINUX": self.printEthernetFrame()
+            if PRINT or self.os == "LINUX": self.printIPPacket()
             return packet[self.currentPacket['header_length']:]
         else:
             return None
@@ -71,7 +72,7 @@ class Sniffer:
     # -----------------------ICMP Packet------------------------------
     def ICMPPacketExtract(self, packet):
         self.currentPacket['type_icmp'], self.currentPacket['code'], self.currentPacket['sequence_number'] = unpack("! B B 4x H", packet[:8])
-        if PRINT: self.printICMPPacket()
+        if PRINT or self.os == "LINUX": self.printICMPPacket()
         return packet[8:]
 
     def printICMPPacket(self):
@@ -94,7 +95,7 @@ class Sniffer:
         self.currentPacket['RST_Flag'] = (flags & 4) >> 2
         self.currentPacket['SYN_Flag'] = (flags & 2) >> 1
         self.currentPacket['FIN_Flag'] = flags & 1
-        if PRINT: self.printTCPPacket()
+        if PRINT or self.os == "LINUX": self.printTCPPacket()
         return packet[self.currentPacket['header_length_tcp']:]
 
     def printTCPPacket(self):
@@ -116,7 +117,7 @@ class Sniffer:
     # -----------------------UDP Packet------------------------------
     def UDPPacketExtract(self, packet):
         self.currentPacket['src_port'], self.currentPacket['dest_port'], self.currentPacket['UDP_len'] = unpack("! H H H 2x", packet[:8])
-        if PRINT: self.printUDPPacket()
+        if PRINT or self.os == "LINUX": self.printUDPPacket()
         return packet[8:]
 
     def printUDPPacket(self):
@@ -144,7 +145,7 @@ class Sniffer:
             IP_Packet = self.ethernetFrameExtract(self.packet)
             if IP_Packet != None:
                 protocol_packet = self.IPPacketExtract(IP_Packet)
-                sign_object = Signatures(self.currentPacket['src_mac_addr'], self.currentPacket['dest_mac_addr'], self.currentPacket['src_ip_addr'], self.currentPacket['dest_ip_addr'])
+                sign_object = Signatures(self.currentPacket['src_mac'], self.currentPacket['dest_mac'], self.currentPacket['src_ip_addr'], self.currentPacket['dest_ip_addr'])
             else:
                 protocol_packet = None
         elif self.os == "WIN":
@@ -159,7 +160,7 @@ class Sniffer:
                     if self.config["DOS"]["ping"]["status"] == True:
                         sign_object.DenialOfService("ping", self.config["DOS"]["ping"]["threshold"], self.config["DOS"]["ping"]["timeinterval"])
                     if self.config["DDOS"]["ping"]["status"] == True:
-                        sign_object.DistrubutedDOS("ping", self.config["DDOS"]["ping"]["threshold"], self.config["DDOS"]["ping"]["timeinterval"])
+                        sign_object.DistrubutedDOS("ping", self.config["DOS"]["ping"]["status"],self.config["DDOS"]["ping"]["threshold"], self.config["DDOS"]["ping"]["timeinterval"])
             # TCP Packet
             elif self.currentPacket['protocol'] == 6:
                 remaining_data = self.TCPPacketExtract(protocol_packet)
@@ -168,7 +169,7 @@ class Sniffer:
                     if self.config["DOS"]["syn"]["status"] == True:
                         sign_object.DenialOfService("syn", self.config["DOS"]["syn"]["threshold"], self.config["DOS"]["syn"]["timeinterval"])
                     if self.config["DDOS"]["syn"]["status"] == True:
-                        sign_object.DistrubutedDOS("syn", self.config["DDOS"]["syn"]["threshold"], self.config["DDOS"]["syn"]["timeinterval"])
+                        sign_object.DistrubutedDOS("syn", self.config["DOS"]["syn"]["status"],self.config["DDOS"]["syn"]["threshold"], self.config["DDOS"]["syn"]["timeinterval"])
                 if self.currentPacket['src_port'] == 21 and self.config["FTP"]["status"]:
                     bytes = "530 User cannot log in.".encode()
                     if bytes in remaining_data:
@@ -179,18 +180,19 @@ class Sniffer:
                 if self.config["DOS"]["udp"]["status"] == True:
                     sign_object.DenialOfService("udp", self.config["DOS"]["udp"]["threshold"], self.config["DOS"]["udp"]["timeinterval"])
                 if self.config["DDOS"]["udp"]["status"] == True:
-                    sign_object.DistrubutedDOS("udp", self.config["DDOS"]["udp"]["threshold"], self.config["DDOS"]["udp"]["timeinterval"])
+                    sign_object.DistrubutedDOS("udp", self.config["DOS"]["udp"]["status"] ,self.config["DDOS"]["udp"]["threshold"], self.config["DDOS"]["udp"]["timeinterval"])
             # For Fetching on Double Click
-            storedData = None
-            try:
-                with open('./PacketLog.json','r') as file:
-                    storedData = json.load(file)
-                storedData["Packets"].append(self.currentPacket)
-            except:
-                pass
-            if storedData != None:
-                with open('./PacketLog.json','w') as file:
-                    json.dump(storedData, file)
+            if self.os == "WIN":
+                storedData = None
+                try:
+                    with open('./PacketLog.json','r') as file:
+                        storedData = json.load(file)
+                    storedData["Packets"].append(self.currentPacket)
+                except:
+                    pass
+                if storedData != None:
+                    with open('./PacketLog.json','w') as file:
+                        json.dump(storedData, file)
             if sign_object.dos_attack == None and sign_object.ddos_attack == None:
                 return []
             elif sign_object.ddos_attack != None:
@@ -216,17 +218,17 @@ class Sniffer:
         row = None
         if self.os == "LINUX":
             if self.currentPacket['protocol'] == 1:
-                row = "{}. {},{} --> {},{} IPv{} ICMP({}) type:{} code:{} seq_num:{}, {}\n".format(index, self.currentPacket['src_mac_addr'], self.currentPacket['src_ip_addr'],
-                                self.currentPacket['dest_mac_addr'], self.currentPacket['dest_ip_addr'], self.currentPacket['version'], self.currentPacket['protocol'],
+                row = "{}. {},{} --> {},{} IPv{} ICMP({}) type:{} code:{} seq_num:{}, {}\n".format(index, self.currentPacket['src_mac'], self.currentPacket['src_ip_addr'],
+                                self.currentPacket['dest_mac'], self.currentPacket['dest_ip_addr'], self.currentPacket['version'], self.currentPacket['protocol'],
                                 self.currentPacket['type_icmp'], self.currentPacket['code'], self.currentPacket['sequence_number'], attacktype)
             elif self.currentPacket['protocol'] == 6:
                 row = "{}. {},{},{} --> {},{},{} IPv{} TCP({}) seq_num:{} ack_num:{} URG:{} ACK:{} PSH:{} RST:{} SYN:{} FIN:{}, {}\n".format(
-                    index, self.currentPacket['src_mac_addr'], self.currentPacket['src_ip_addr'], self.currentPacket['src_port'], self.currentPacket['dest_mac_addr'],
+                    index, self.currentPacket['src_mac'], self.currentPacket['src_ip_addr'], self.currentPacket['src_port'], self.currentPacket['dest_mac'],
                     self.currentPacket['dest_ip_addr'], self.currentPacket['dest_port'], self.currentPacket['version'], self.currentPacket['protocol'], self.currentPacket['seq_number'], self.currentPacket['ack_number'], self.currentPacket['URG_Flag'],
                     self.currentPacket['ACK_Flag'], self.currentPacket['PSH_Flag'], self.currentPacket['RST_Flag'], self.currentPacket['SYN_Flag'], self.currentPacket['FIN_Flag'], attacktype)
             elif self.currentPacket['protocol'] == 17:
                 row = "{}. {},{},{} --> {},{},{} IPv{} UDP({}) data:{}bits, {}\n".format(
-                    index, self.currentPacket['src_mac_addr'], self.currentPacket['src_ip_addr'], self.currentPacket['src_port'], self.currentPacket['dest_mac_addr'],
+                    index, self.currentPacket['src_mac'], self.currentPacket['src_ip_addr'], self.currentPacket['src_port'], self.currentPacket['dest_mac'],
                     self.currentPacket['dest_ip_addr'], self.currentPacket['dest_port'], self.currentPacket['version'], self.currentPacket['protocol'], self.currentPacket['UDP_len'], attacktype)
         elif self.os == "WIN":
             if self.currentPacket['protocol'] == 1:

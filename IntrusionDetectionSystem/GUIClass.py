@@ -98,11 +98,12 @@ class GUI:
             raw_packet, IPaddr = self.s.recvfrom(65536)
             ps_object = Sniffer(raw_packet, GUI.config, "WIN")
             capture = ps_object.capturePacket()
-            row = ps_object.appendRowToGUI()
-            # print(bool(capture))
-            if not bool(capture):
+            if not bool(capture) and capture != None:
+                row = ps_object.appendRowToGUI()
                 self.appendData(GUI.index, GUI.index+1, row)
-            elif capture != -1:
+                GUI.index = GUI.index + 1
+            elif bool(capture):
+                row = ps_object.appendRowToGUI()
                 self.appendData(GUI.index, GUI.index+1, row, ('attack',))
                 if capture[0] == "Distributed Denial of Service":
                     self.alertAttackDDOS(capture)
@@ -110,11 +111,11 @@ class GUI:
                     self.alertAttackDOS(capture)
                 if capture[0] == "FTP Brute Force Attack":
                     self.alertAttackFTP(capture)
-            if GUI.config["logEnabled"] and not bool(capture):
+                GUI.index = GUI.index + 1
+            if GUI.config["logEnabled"] and not bool(capture) and capture != None:
                 ps_object.logPacketToFile(GUI.index+1, self.filename)
             elif GUI.config["logEnabled"] and bool(capture):
                 ps_object.logPacketToFile(GUI.index+1, self.filename, "AttackPacket")
-            GUI.index = GUI.index + 1
             try:
                 self.labelText.set(" Number of Packets Captured: {}  ".format(GUI.index))
             except:
@@ -127,7 +128,8 @@ class GUI:
         GUI.currentCaptureState = True
         # HOST = socket.gethostbyname(socket.gethostname())
         # HOST = socket.gethostbyname(socket.gethostname())
-        HOST = socket.gethostbyname_ex(socket.gethostname())[2][0]
+        HOST = socket.gethostbyname_ex(socket.gethostname())[2][3]
+        # HOST = "192.168.1.23"
         print("Interface IP: %s" % HOST)
         # Create a raw socket and bind it to the public interface
         self.s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_IP)
@@ -528,7 +530,7 @@ class GUI:
                                                    int(self.alertddos.winfo_screenheight()/2 - self.alertddos.winfo_reqheight()/2)))
             self.alertddos.winfo_toplevel()
             self.alertddos.focus_force()
-            Label(self.alertddos, anchor=CENTER, text="Alert! Distributed Denial of Service detected from IP: {}\nType: {} Flood!".format(display[1], display[2].upper()), font=('helvetica', 9)).pack()
+            Label(self.alertddos, anchor=CENTER, text="Alert! Distributed Denial of Service detected from \nIP's: {}\nType: {} Flood!".format(', '.join(list(display[1])), display[2].upper()), font=('helvetica', 9)).pack()
             self.alertddos.protocol('WM_DELETE_WINDOW', self.alertddosClosed)
             self.alertddos.mainloop()
 

@@ -1,4 +1,4 @@
-import platform
+import platform,json
 from datetime import datetime
 
 if platform.system().lower() == "windows":
@@ -14,9 +14,6 @@ START = True
 
 def main():
     # Initializing the file.
-    with open('./PacketLog.json','w') as file:
-        json.dump({"Packets": []}, file)
-
     try:
         with open('./Config.json','r'):
             pass
@@ -31,7 +28,7 @@ def main():
                         "ping":{"threshold": 100, "timeinterval": 120, "status":True},
                         "syn":{"threshold": 100, "timeinterval": 120, "status":True},
                         "udp":{"threshold": 100, "timeinterval": 120, "status":True}},
-                   "logEnabled":False,
+                   "logEnabled":True,
                    "FTP":
                        {"status":True,
                         "threshold":3000, "timeinterval":120}}
@@ -42,9 +39,14 @@ def main():
         fetchConfig = json.load(file)
 
     if OSNAME == "WIN":
+        with open('./PacketLog.json','w') as file:
+            json.dump({"Packets": []}, file)
+
         gui = GUI(fetchConfig)
 
     elif OSNAME == "LINUX":
+        import socket
+        from PacketSnifferClass import Sniffer
         if fetchConfig["logEnabled"] == True:
             format = "%d_%m_%Y_%H_%M_%S"
             logFileName = datetime.now().strftime(format)+".txt"
@@ -59,10 +61,10 @@ def main():
             raw_packet, IPaddr = s.recvfrom(65536)
             ps_object = Sniffer(raw_packet, fetchConfig, OSNAME)
             capture = ps_object.capturePacket()
-            if fetchConfig["logEnabled"] and not bool(capture):
-                ps_object.logPacketToFile(index, logFileName)
+            if fetchConfig["logEnabled"] and not bool(capture) and capture != None:
+                ps_object.logPacketToFile(index+1, logFileName)
             elif fetchConfig["logEnabled"] and bool(capture):
-                ps_object.logPacketToFile(index, logFileName, "AttackPacket")
+                ps_object.logPacketToFile(index+1, logFileName, "AttackPacket")
             index = index + 1
 
 if __name__ == '__main__':
