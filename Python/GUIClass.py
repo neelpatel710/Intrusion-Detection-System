@@ -3,10 +3,8 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import messagebox, Checkbutton, IntVar
 from PacketSnifferClass import Sniffer
-from pystray import MenuItem as item
-import pystray
 from datetime import datetime
-from PIL import Image
+from MailClass import Mailer
 
 class GUI:
     currentCaptureState = False
@@ -79,20 +77,6 @@ class GUI:
         # More Details
         self.tree_view.bind("<Double-1>", self.OnDoubleClick)
 
-    # def iconTray(self):
-    #     image = Image.open('Tray Icon.png')
-    #     self.menu = pystray.Menu(item("Open", self.actionOpen),item("Quit", self.actionClose))
-    #     self.icon_var = pystray.Icon('IDS', image, 'IDST', self.menu)
-    #
-    # def actionOpen(self):
-    #     self.icon_var.stop()
-    #     self.main_window.deiconify()
-    #     self.main_window.focus_force()
-    #
-    # def actionClose(self):
-    #     # self.main_window.deiconify()
-    #     sys.exit(0)
-
     def capturing(self):
         while GUI.currentCaptureState and not self.thread.stopped():
             raw_packet, IPaddr = self.s.recvfrom(65536)
@@ -128,7 +112,7 @@ class GUI:
         GUI.currentCaptureState = True
         # HOST = socket.gethostbyname(socket.gethostname())
         # HOST = socket.gethostbyname(socket.gethostname())
-        HOST = socket.gethostbyname_ex(socket.gethostname())[2][3]
+        HOST = socket.gethostbyname_ex(socket.gethostname())[2][0]
         # HOST = "192.168.1.23"
         print("Interface IP: %s" % HOST)
         # Create a raw socket and bind it to the public interface
@@ -138,7 +122,7 @@ class GUI:
         self.s.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 1)
         # Promiscuous mode - Enabled
         self.s.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
-        if self.config["logEnabled"] == True:
+        if GUI.config["logEnabled"] == True:
             format = "%d_%m_%Y_%H_%M_%S"
             self.filename = datetime.now().strftime(format)+".txt"
             with open('./'+str(self.filename), 'w'):
@@ -147,8 +131,6 @@ class GUI:
             self.filename = "None.txt"
         if GUI.time == None:
             GUI.time = time.time()
-        # self.thread = threading.Thread(target=self.capturing, daemon=True)
-        # self.thread.start()
         self.thread = StoppableThread(target=self.capturing, daemon=True)
         self.thread.start()
 
@@ -158,7 +140,6 @@ class GUI:
         self.btnStopCapture.config(state=DISABLED)
         GUI.currentCaptureState = False
         self.s.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
-        # self.thread = None
         self.thread.stop()
 
     def disableAll(self,mainAttack):
@@ -506,6 +487,8 @@ class GUI:
 
     def alertAttackDOS(self,display):
         if self.AlertShownDOS == 0:
+            mailer = Mailer(GUI.config["Mail"])
+            mailer.send("Alert! Denial of Service detected from IP: {}\nType: {} Flood!".format(display[1], display[2].upper()))
             self.alertdos = Tk()
             self.alertdos.title(display[0])
             self.alertdos.geometry("350x50")
@@ -523,6 +506,8 @@ class GUI:
 
     def alertAttackDDOS(self,display):
         if self.AlertShownDDOS == 0:
+            mailer = Mailer(GUI.config["Mail"])
+            mailer.send("Alert! Distributed Denial of Service detected from \nIP's: {}\nType: {} Flood!".format(', '.join(list(display[1])), display[2].upper()))
             self.alertddos = Tk()
             self.alertddos.title(display[0])
             self.alertddos.geometry("400x50")
@@ -540,6 +525,8 @@ class GUI:
 
     def alertAttackFTP(self,display):
         if self.AlertShownFTP == 0:
+            mailer = Mailer(GUI.config["Mail"])
+            mailer.send("Alert! FTP Login-Brute Force Attack detected from \nIP: {}!".format(display[1]))
             self.alertftp = Tk()
             self.alertftp.title(display[0])
             self.alertftp.geometry("350x50")
@@ -628,10 +615,6 @@ Data Length:{} Bits""".format(selectedPacket["pacID"],selectedPacket['version'],
     def onClosing(self):
         self.main_window.withdraw()
         sys.exit(0)
-        # self.iconTray()
-        # self.thread.stop()
-        # self.thread2 = StoppableThread(target=self.capturing, daemon=True)
-        # self.icon_var.run(setup=self.capturing)
         # self.main_window.destroy()
 
 class StoppableThread(threading.Thread):

@@ -14,9 +14,9 @@ class Sniffer:
         self.packet = packet
         self.os = os
         # self.PROTOCOL_DICT = {1:"ICMP"}
-        self.PROTOCOL_DICT = {6:"TCP"}
+        # self.PROTOCOL_DICT = {6:"TCP"}
         # self.PROTOCOL_DICT = {17:"UDP"}
-        # self.PROTOCOL_DICT = {1:"ICMP", 6:"TCP", 17:"UDP"}
+        self.PROTOCOL_DICT = {1:"ICMP", 6:"TCP", 17:"UDP"}
         self.attack = {"dping": 0, "dsyn": 0, "dudp": 0, "ddping": 0, "ddsyn": 0, "ddudp": 0}
 
     # --------------------Ethernet Frame----------------------------

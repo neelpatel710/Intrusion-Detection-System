@@ -1,5 +1,6 @@
 import platform,json
 from datetime import datetime
+from MailClass import Mailer
 
 if platform.system().lower() == "windows":
     from GUIClass import *
@@ -31,13 +32,17 @@ def main():
                    "logEnabled":True,
                    "FTP":
                        {"status":True,
-                        "threshold":3000, "timeinterval":120}}
+                        "threshold":3000, "timeinterval":120},
+                   "Mail":
+                       {"server":"smtp.gmail.com",
+                        "serverport": 587,
+                        "sender": "None",
+                        "receiver": "None"}}
 
         with open('./Config.json','w') as file:
             json.dump(default,file)
     with open("./Config.json",'r') as file:
         fetchConfig = json.load(file)
-
     if OSNAME == "WIN":
         with open('./PacketLog.json','w') as file:
             json.dump({"Packets": []}, file)
@@ -61,6 +66,16 @@ def main():
             raw_packet, IPaddr = s.recvfrom(65536)
             ps_object = Sniffer(raw_packet, fetchConfig, OSNAME)
             capture = ps_object.capturePacket()
+            if bool(capture):
+                if capture[0] == "Distributed Denial of Service":
+                    mailer = Mailer(fetchConfig["Mail"])
+                    mailer.send("Alert! Distributed Denial of Service detected from \nIP's: {}\nType: {} Flood!".format(', '.join(list(capture[1])), capture[2].upper()))
+                if capture[0] == "Denial of Service":
+                    mailer = Mailer(fetchConfig["Mail"])
+                    mailer.send("Alert! Denial of Service detected from IP: {}\nType: {} Flood!".format(capture[1], capture[2].upper()))
+                if capture[0] == "FTP Brute Force Attack":
+                    mailer = Mailer(fetchConfig["Mail"])
+                    mailer.send("Alert! FTP Login-Brute Force Attack detected from \nIP: {}!".format(capture[1]))
             if fetchConfig["logEnabled"] and not bool(capture) and capture != None:
                 ps_object.logPacketToFile(index+1, logFileName)
             elif fetchConfig["logEnabled"] and bool(capture):
