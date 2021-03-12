@@ -15,4 +15,4 @@
 <br> 3. Open command prompt (as administrator) and change the directory to downloaded folder.
 <br> 4. Type command "python Main.py" and hit Enter.
 <br> 5. Leave it running.
-<br> <U>Note::</U> You can change the threshold & time interval values, along with on/off feature using Graphical User Interface.
+<br> Note:: You can change the threshold & time interval values, along with on/off feature using Graphical User Interface.
