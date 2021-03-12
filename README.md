@@ -1,5 +1,4 @@
 # Intrusion Detection System
-<br>
 <br> For Linux:
 <br> 1. Clone the repository.
 <br> 2. Open terminal and change the directory to downloaded folder.
