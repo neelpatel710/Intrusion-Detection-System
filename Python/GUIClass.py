@@ -110,9 +110,9 @@ class GUI:
         self.btnConfig.config(state=DISABLED)
         self.btnStopCapture.config(state=NORMAL)
         GUI.currentCaptureState = True
+        HOST = socket.gethostbyname(socket.gethostname())
         # HOST = socket.gethostbyname(socket.gethostname())
-        # HOST = socket.gethostbyname(socket.gethostname())
-        HOST = socket.gethostbyname_ex(socket.gethostname())[2][0]
+        # HOST = socket.gethostbyname_ex(socket.gethostname())[2][0]
         # HOST = "192.168.1.23"
         print("Interface IP: %s" % HOST)
         # Create a raw socket and bind it to the public interface
