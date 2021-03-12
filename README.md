@@ -1,17 +1,17 @@
 # Intrusion Detection System
-Attack Included: Denial of Service (PING, SYN and UDP Flood), Distributed Denial of Service (PING, SYN and UDP Flood) and FTP Login (Brute Force)
-<br> Programming Language: Python 3.6
-<br> For Linux:
+<b>Attack Included: </b>Denial of Service (PING, SYN and UDP Flood), Distributed Denial of Service (PING, SYN and UDP Flood) and FTP Login (Brute Force)
+<br><b>Programming Language: </b>Python 3.6
+<br><b>For Linux:</b>
 <br> 1. Clone the repository.
 <br> 2. Open terminal and change the directory to downloaded folder.
 <br> 3. Type command "sudo python Main.py" and hit Enter.
 <br> 4. Leave it running.
-<br> Note:: You can change the threshold & time interval values, along with on/off feature using Config.json.
+<br> <u>Note::</u> You can change the threshold & time interval values, along with on/off feature using Config.json.
 <br>
-<br>For Windows:
+<br><b>For Windows:</b>
 <br> 1. Clone the repository.
 <br> 2. First download and install tkinter using command "pip install tkinter" in cmd.
 <br> 3. Open command prompt (as administrator) and change the directory to downloaded folder.
 <br> 4. Type command "python Main.py" and hit Enter.
 <br> 5. Leave it running.
-<br> Note:: You can change the threshold & time interval values, along with on/off feature using Graphical User Interface.
+<br> <u>Note::</u> You can change the threshold & time interval values, along with on/off feature using Graphical User Interface.
