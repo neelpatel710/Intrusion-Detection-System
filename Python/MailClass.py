@@ -11,6 +11,7 @@ class Mailer:
             self.server.starttls()
             # print(self.server.ehlo())
             # Enter Your Password instead of None below. Example: "password"
+            self.server.login(self.sendfrom, "None")
         except:
             print("Error! Mailer misconfigured!")
 
