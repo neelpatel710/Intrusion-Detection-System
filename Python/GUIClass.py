@@ -110,9 +110,9 @@ class GUI:
         self.btnConfig.config(state=DISABLED)
         self.btnStopCapture.config(state=NORMAL)
         GUI.currentCaptureState = True
-        HOST = socket.gethostbyname(socket.gethostname())
         # HOST = socket.gethostbyname(socket.gethostname())
-        # HOST = socket.gethostbyname_ex(socket.gethostname())[2][0]
+        # HOST = socket.gethostbyname(socket.gethostname())
+        HOST = socket.gethostbyname_ex(socket.gethostname())[2][0]
         # HOST = "192.168.1.23"
         print("Interface IP: %s" % HOST)
         # Create a raw socket and bind it to the public interface
@@ -488,7 +488,7 @@ class GUI:
     def alertAttackDOS(self,display):
         if self.AlertShownDOS == 0:
             mailer = Mailer(GUI.config["Mail"])
-            mailer.send("Alert! Denial of Service detected from IP: {}\nType: {} Flood!".format(display[1], display[2].upper()))
+            mailer.send("Alert! Denial of Service detected from \nIP ~ {}\nType ~ {} Flood!".format(display[1], display[2].upper()))
             self.alertdos = Tk()
             self.alertdos.title(display[0])
             self.alertdos.geometry("350x50")
@@ -507,7 +507,7 @@ class GUI:
     def alertAttackDDOS(self,display):
         if self.AlertShownDDOS == 0:
             mailer = Mailer(GUI.config["Mail"])
-            mailer.send("Alert! Distributed Denial of Service detected from \nIP's: {}\nType: {} Flood!".format(', '.join(list(display[1])), display[2].upper()))
+            mailer.send("Alert! Distributed Denial of Service detected from \nIP's ~ {}\nType ~ {} Flood!".format(', '.join(list(display[1])), display[2].upper()))
             self.alertddos = Tk()
             self.alertddos.title(display[0])
             self.alertddos.geometry("400x50")
@@ -526,7 +526,7 @@ class GUI:
     def alertAttackFTP(self,display):
         if self.AlertShownFTP == 0:
             mailer = Mailer(GUI.config["Mail"])
-            mailer.send("Alert! FTP Login-Brute Force Attack detected from \nIP: {}!".format(display[1]))
+            mailer.send("Alert! FTP Login-Brute Force Attack detected from \nIP ~ {}".format(display[1]))
             self.alertftp = Tk()
             self.alertftp.title(display[0])
             self.alertftp.geometry("350x50")

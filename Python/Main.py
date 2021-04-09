@@ -21,23 +21,23 @@ def main():
     except:
         default = {"DOS":
                        {"status":True,
-                        "ping":{"threshold": 10, "timeinterval": 60, "status":True},
-                        "syn":{"threshold": 50, "timeinterval": 60, "status":True},
-                        "udp":{"threshold": 50, "timeinterval": 60, "status":True}},
+                        "ping":{"threshold": 300, "timeinterval": 120, "status":True},
+                        "syn":{"threshold": 300, "timeinterval": 120, "status":True},
+                        "udp":{"threshold": 300, "timeinterval": 120, "status":True}},
                    "DDOS":
                        {"status":True,
-                        "ping":{"threshold": 100, "timeinterval": 120, "status":True},
-                        "syn":{"threshold": 100, "timeinterval": 120, "status":True},
-                        "udp":{"threshold": 100, "timeinterval": 120, "status":True}},
+                        "ping":{"threshold": 5000, "timeinterval": 120, "status":True},
+                        "syn":{"threshold": 5000, "timeinterval": 120, "status":True},
+                        "udp":{"threshold": 5000, "timeinterval": 120, "status":True}},
                    "logEnabled":True,
                    "FTP":
                        {"status":True,
-                        "threshold":3000, "timeinterval":120},
+                        "threshold":50, "timeinterval":120},
                    "Mail":
                        {"server":"smtp.gmail.com",
                         "serverport": 587,
-                        "sender": "None",
-                        "receiver": "None"}}
+                        "sender": "xyz@gmail.com",
+                        "receiver": "xyz@gmail.com"}}
 
         with open('./Config.json','w') as file:
             json.dump(default,file)
@@ -69,13 +69,13 @@ def main():
             if bool(capture):
                 if capture[0] == "Distributed Denial of Service":
                     mailer = Mailer(fetchConfig["Mail"])
-                    mailer.send("Alert! Distributed Denial of Service detected from \nIP's: {}\nType: {} Flood!".format(', '.join(list(capture[1])), capture[2].upper()))
+                    mailer.send("Alert! Distributed Denial of Service detected from \nIP's ~ {}\nType ~ {} Flood!".format(', '.join(list(capture[1])), capture[2].upper()))
                 if capture[0] == "Denial of Service":
                     mailer = Mailer(fetchConfig["Mail"])
-                    mailer.send("Alert! Denial of Service detected from IP: {}\nType: {} Flood!".format(capture[1], capture[2].upper()))
+                    mailer.send("Alert! Denial of Service detected from \nIP ~ {}\nType ~ {} Flood!".format(capture[1], capture[2].upper()))
                 if capture[0] == "FTP Brute Force Attack":
                     mailer = Mailer(fetchConfig["Mail"])
-                    mailer.send("Alert! FTP Login-Brute Force Attack detected from \nIP: {}!".format(capture[1]))
+                    mailer.send("Alert! FTP Login-Brute Force Attack detected from \nIP ~ {}".format(capture[1]))
             if fetchConfig["logEnabled"] and not bool(capture) and capture != None:
                 ps_object.logPacketToFile(index+1, logFileName)
             elif fetchConfig["logEnabled"] and bool(capture):
